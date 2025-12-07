@@ -37,8 +37,8 @@ def get_audio_files(input_dir, extensions):
     return audio_files
 
 
-def create_drum_kit(audio_files, output_dir, max_files):
-    """Create a drum kit by copying random audio files."""
+def create_drum_kit(audio_files, output_dir, max_files, use_symlinks=False):
+    """Create a drum kit by copying or symlinking random audio files."""
     if not audio_files:
         print("No audio files found!")
         return False
@@ -56,9 +56,10 @@ def create_drum_kit(audio_files, output_dir, max_files):
     selected_files = random.sample(audio_files, num_files)
     
     print(f"\nCreating drum kit: {kit_name}")
-    print(f"Copying {num_files} files...")
+    action = "Creating symlinks to" if use_symlinks else "Copying"
+    print(f"{action} {num_files} files...")
     
-    # Copy files to kit directory
+    # Copy or symlink files to kit directory
     for i, source_file in enumerate(selected_files, 1):
         # Get just the filename from the full path
         filename = os.path.basename(source_file)
@@ -67,10 +68,13 @@ def create_drum_kit(audio_files, output_dir, max_files):
         dest_path = os.path.join(kit_dir, new_filename)
         
         try:
-            shutil.copy2(source_file, dest_path)
+            if use_symlinks:
+                os.symlink(source_file, dest_path)
+            else:
+                shutil.copy2(source_file, dest_path)
             print(f"  {i:2d}. {filename}")
         except Exception as e:
-            print(f"  Error copying {filename}: {e}")
+            print(f"  Error {'linking' if use_symlinks else 'copying'} {filename}: {e}")
             return False
     
     print(f"\n✓ Drum kit created successfully!")
@@ -141,6 +145,18 @@ def main():
         extensions = ['wav', 'aif', 'aiff', 'mp3', 'flac']
     
     print(f"\nLooking for files with extensions: {', '.join(extensions)}")
+    
+    # Ask about copying vs symlinking
+    print("\nFile handling options:")
+    print("1. Copy files (duplicates files, uses more disk space)")
+    print("2. Create symbolic links (points to originals, saves disk space)")
+    while True:
+        choice = input("Choose option (1 or 2): ").strip()
+        if choice in ['1', '2']:
+            use_symlinks = choice == '2'
+            break
+        print("Please enter 1 or 2.")
+    
     print("-" * 60)
     
     # Find all audio files
@@ -169,7 +185,7 @@ def main():
     # Generate drum kits
     successful_kits = 0
     for kit_num in range(num_kits):
-        if create_drum_kit(audio_files, output_dir, max_files):
+        if create_drum_kit(audio_files, output_dir, max_files, use_symlinks):
             successful_kits += 1
         
         # Wait a second between kits to ensure unique timestamps
